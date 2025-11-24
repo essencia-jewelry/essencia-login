@@ -7,8 +7,7 @@ export default function Home() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
 
-  // Ha a Shopify-tól jövünk, pl.:
-  // https://login.essenciastore.com?redirect=https://essenciastore.com/account
+  // Ha a Shopify-tól jövünk: ?redirect=https://essenciastore.com/account
   const redirectUrl =
     searchParams.get("redirect") ?? "https://essenciastore.com/account";
 
@@ -26,7 +25,7 @@ export default function Home() {
 
   const handleSignOut = () => {
     signOut({
-      callbackUrl: "https://essenciastore.com",
+      callbackUrl: "https://essenciastore.com", // kijelentkezés után főoldal
     });
   };
 
@@ -62,7 +61,6 @@ export default function Home() {
         >
           Essencia Login
         </h1>
-
         <p
           style={{
             marginBottom: "1.6rem",
@@ -76,13 +74,8 @@ export default function Home() {
         {status === "loading" && <p>Betöltés…</p>}
 
         {status === "unauthenticated" && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.8rem",
-            }}
-          >
+          <>
+            {/* Google gomb */}
             <button
               onClick={handleGoogleSignIn}
               style={{
@@ -98,6 +91,7 @@ export default function Home() {
                 fontWeight: 500,
                 width: "100%",
                 justifyContent: "center",
+                marginBottom: "0.75rem",
               }}
             >
               <span role="img" aria-label="lock">
@@ -106,6 +100,7 @@ export default function Home() {
               <span>Bejelentkezés Google-fiókkal</span>
             </button>
 
+            {/* Facebook gomb */}
             <button
               onClick={handleFacebookSignIn}
               style={{
@@ -113,13 +108,13 @@ export default function Home() {
                 borderRadius: "999px",
                 border: "1px solid #1877f2",
                 cursor: "pointer",
+                fontSize: "0.98rem",
+                fontWeight: 500,
+                background: "#1877f2",
+                color: "white",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "0.7rem",
-                background: "#1877f2",
-                color: "white",
-                fontSize: "0.98rem",
-                fontWeight: 500,
                 width: "100%",
                 justifyContent: "center",
               }}
@@ -127,7 +122,7 @@ export default function Home() {
               <span>📘</span>
               <span>Bejelentkezés Facebookkal</span>
             </button>
-          </div>
+          </>
         )}
 
         {status === "authenticated" && (
@@ -159,7 +154,7 @@ export default function Home() {
             color: "#9ca3af",
           }}
         >
-          A bejelentkezést az Essencia saját, biztonságos rendszere kezeli.
+          A bejelentkezést az Essencia saját biztonságos rendszere kezeli.
         </p>
       </div>
     </main>
