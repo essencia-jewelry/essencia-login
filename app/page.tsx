@@ -7,21 +7,26 @@ export default function Home() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
 
-  // Ha a Shopify-tól jövünk, ilyesmi URL lesz:
+  // Ha a Shopify-tól jövünk, pl.:
   // https://login.essenciastore.com?redirect=https://essenciastore.com/account
   const redirectUrl =
     searchParams.get("redirect") ?? "https://essenciastore.com/account";
 
-  const handleSignIn = () => {
-    // NextAuth-nak megadjuk, hova menjen vissza sikeres login után
+  const handleGoogleSignIn = () => {
     signIn("google", {
+      callbackUrl: redirectUrl,
+    });
+  };
+
+  const handleFacebookSignIn = () => {
+    signIn("facebook", {
       callbackUrl: redirectUrl,
     });
   };
 
   const handleSignOut = () => {
     signOut({
-      callbackUrl: "https://essenciastore.com", // ha kilép, menjen vissza a főoldalra
+      callbackUrl: "https://essenciastore.com",
     });
   };
 
@@ -57,6 +62,7 @@ export default function Home() {
         >
           Essencia Login
         </h1>
+
         <p
           style={{
             marginBottom: "1.6rem",
@@ -64,41 +70,71 @@ export default function Home() {
             fontSize: "0.95rem",
           }}
         >
-          Biztonságos bejelentkezés Google-fiókkal.
+          Biztonságos bejelentkezés Google- vagy Facebook-fiókkal.
         </p>
 
         {status === "loading" && <p>Betöltés…</p>}
 
         {status === "unauthenticated" && (
-          <button
-            onClick={handleSignIn}
+          <div
             style={{
-              padding: "0.9rem 1.9rem",
-              borderRadius: "999px",
-              border: "1px solid #e5e7eb",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.7rem",
-              background: "white",
-              fontSize: "0.98rem",
-              fontWeight: 500,
-              width: "100%",
-              justifyContent: "center",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.8rem",
             }}
           >
-            <span role="img" aria-label="lock">
-              🔒
-            </span>
-            <span>Bejelentkezés Google-fiókkal</span>
-          </button>
+            <button
+              onClick={handleGoogleSignIn}
+              style={{
+                padding: "0.9rem 1.9rem",
+                borderRadius: "999px",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.7rem",
+                background: "white",
+                fontSize: "0.98rem",
+                fontWeight: 500,
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
+              <span role="img" aria-label="lock">
+                🔒
+              </span>
+              <span>Bejelentkezés Google-fiókkal</span>
+            </button>
+
+            <button
+              onClick={handleFacebookSignIn}
+              style={{
+                padding: "0.9rem 1.9rem",
+                borderRadius: "999px",
+                border: "1px solid #1877f2",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.7rem",
+                background: "#1877f2",
+                color: "white",
+                fontSize: "0.98rem",
+                fontWeight: 500,
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
+              <span>📘</span>
+              <span>Bejelentkezés Facebookkal</span>
+            </button>
+          </div>
         )}
 
         {status === "authenticated" && (
           <>
             <p style={{ marginBottom: "1rem", fontSize: "0.95rem" }}>
               Bejelentkezve mint{" "}
-              <strong>{session.user?.email ?? "ismeretlen felhasználó"}</strong>
+              <strong>{session?.user?.email ?? "ismeretlen felhasználó"}</strong>
             </p>
             <button
               onClick={handleSignOut}
@@ -123,7 +159,7 @@ export default function Home() {
             color: "#9ca3af",
           }}
         >
-          A Google bejelentkezést az Essencia saját biztonságos rendszere kezeli.
+          A bejelentkezést az Essencia saját, biztonságos rendszere kezeli.
         </p>
       </div>
     </main>

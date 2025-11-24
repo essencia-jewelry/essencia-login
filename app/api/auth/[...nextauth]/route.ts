@@ -1,28 +1,34 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+    }),
+    // később ide jöhet majd egy CredentialsProvider is (email/jelszó)
   ],
+
   callbacks: {
-    // Itt döntjük el, sikeres login után hova mehet a user
     async redirect({ url, baseUrl }) {
-      // Ha a redirect URL az Essencia Shopify domainre mutat, engedjük
+      // Ha Shopify-ra mutat, engedjük:
       if (url.startsWith("https://essenciastore.com")) {
         return url;
       }
 
-      // Ha relatív URL (pl. /valami), akkor maradjon az app domainen
+      // Relatív URL → maradjon az app domainen
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
       }
 
-      // Biztonsági alapértelmezett: menjen vissza az app főoldalára
+      // Biztonsági default
       return baseUrl;
     },
   },
