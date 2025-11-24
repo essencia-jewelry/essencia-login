@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Essencia Login",
-  description: "Safe login",
+  description: "Safe login with Google & Facebook",
 };
 
 export default function RootLayout({
@@ -24,10 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="hu">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
           {children}
         </SessionProvider>
