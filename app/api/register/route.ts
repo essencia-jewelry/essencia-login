@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-// @ts-ignore - Vercel TS nem talál típusokat bcrypt-hez, de a runtime működik
+// @ts-ignore - Vercel TS nem talál típusokat, de runtime-ban működik
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
     const { identifier, phone, password, name } = (await req.json()) as {
-      identifier?: string; // email VAGY telefon a fő mező
-      phone?: string;      // opcionális külön telefon mező
+      identifier?: string; // email VAGY telefon
+      phone?: string;
       password?: string;
       name?: string;
     };
 
-    // Minimum: legyen valamilyen azonosító
+    // --- VALIDÁCIÓK ---
+
     if (!identifier || identifier.trim() === "") {
       return NextResponse.json(
         { error: "Adj meg email címet vagy telefonszámot." },
@@ -34,7 +35,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Eldöntjük, hogy az identifier email-e vagy telefon
     const trimmedIdentifier = identifier.trim();
     const isEmail = trimmedIdentifier.includes("@");
 
@@ -44,10 +44,10 @@ export async function POST(req: Request) {
     let normalizedPhone: string | undefined = undefined;
 
     if (!isEmail) {
-      // Ha nem email, akkor az identifier-t kezeljük telefonszámként
+      // ha az identifier telefon
       normalizedPhone = trimmedIdentifier.replace(/\s+/g, "");
     } else if (phone && phone.trim() !== "") {
-      // Ha az identifier email, de külön adtak meg telefont is
+      // ha az identifier email, de adtak meg külön telefont
       normalizedPhone = phone.trim().replace(/\s+/g, "");
     }
 
@@ -58,7 +58,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Már létezik ilyen email?
+    // --- DUPLIKÁTUM ELLENŐRZÉS ---
+
     if (email) {
       const existingEmail = await prisma.user.findUnique({
         where: { email },
@@ -71,7 +72,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Már létezik ilyen telefon?
     if (normalizedPhone) {
       const existingPhone = await prisma.user.findUnique({
         where: { phone: normalizedPhone },
@@ -83,6 +83,8 @@ export async function POST(req: Request) {
         );
       }
     }
+
+    // --- JELSZÓ HASH + USER LÉTREHOZÁS ---
 
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -99,10 +101,13 @@ export async function POST(req: Request) {
       { message: "Sikeres regisztráció.", userId: user.id },
       { status: 201 }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("Register error:", err);
     return NextResponse.json(
-      { error: "Váratlan hiba történt." },
+      {
+        error: "Váratlan hiba történt.",
+        detail: err?.message ?? null, // <-- itt látni fogjuk a valódi hibát is
+      },
       { status: 500 }
     );
   }
