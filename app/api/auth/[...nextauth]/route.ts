@@ -2,9 +2,17 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcrypt";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+
+  // JWT alapú session – ez a legegyszerűbb
+  session: {
+    strategy: "jwt",
+  },
+
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -22,37 +30,72 @@ export const authOptions: NextAuthOptions = {
     }),
 
     CredentialsProvider({
-      name: "Email és jelszó",
-      // FONTOS: az id maradjon "credentials", így hívjuk a signIn-ben is
+      name: "Email / telefon + jelszó",
       id: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        identifier: { label: "Email vagy telefonszám", type: "text" },
         password: { label: "Jelszó", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email;
-        const password = credentials?.password;
+        const rawIdentifier = credentials?.identifier ?? "";
+        const password = credentials?.password ?? "";
 
-        // 🔥 IDEIGLENES, DEMÓ LOGIKA:
-        // EZZEL FOG MŰKÖDNI:
-        // email:    teszt@essencia.local
-        // jelszó:   Jelszo123
-        if (email === "teszt@essencia.local" && password === "Jelszo123") {
-          return {
-            id: "demo-user-1",
-            name: "Essencia Demo User",
-            email,
-          };
+        const identifier = rawIdentifier.trim();
+
+        if (!identifier || !password) {
+          return null;
         }
 
-        // Ha nem egyezik → sikertelen bejelentkezés
-        return null;
+        let user = null;
+
+        // Ha @ van benne → email, különben telefonszámnak nézzük
+        if (identifier.includes("@")) {
+          user = await prisma.user.findUnique({
+            where: { email: identifier },
+          });
+        } else {
+          const normalizedPhone = identifier.replace(/\s+/g, "");
+          user = await prisma.user.findUnique({
+            where: { phone: normalizedPhone },
+          });
+        }
+
+        if (!user) {
+          return null;
+        }
+
+        const isValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isValid) {
+          return null;
+        }
+
+        // Ez kerül bele a JWT-be és a session-be
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+        };
       },
     }),
   ],
 
   callbacks: {
+    // opcionális, de hasznos: berakjuk az id-t a tokenbe és session-be
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = (user as any).id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token) {
+        (session.user as any).id = token.id;
+      }
+      return session;
+    },
+
     async redirect({ url, baseUrl }) {
+      // Ha essenciastore.com-os URL-t adtál callbacknek, engedjük
       if (url.startsWith("https://essenciastore.com")) return url;
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       return baseUrl;
@@ -61,4 +104,5 @@ export const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
+
 export { handler as GET, handler as POST };

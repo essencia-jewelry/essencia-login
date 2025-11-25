@@ -1,8 +1,8 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { signIn, useSession, signOut } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginClient() {
   const { data: session, status } = useSession();
@@ -11,50 +11,103 @@ export default function LoginClient() {
   const redirectUrl =
     searchParams.get("redirect") ?? "https://essenciastore.com/account";
 
-  // Saját email/jelszó form state
-  const [email, setEmail] = useState("");
+  // Email/jelszó state-ek
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  // Üzenetek + loading
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleGoogle = () => {
-    signIn("google", { callbackUrl: redirectUrl });
+  const clearMessages = () => {
+    setMessage(null);
+    setError(null);
   };
 
-  const handleFacebook = () => {
-    signIn("facebook", { callbackUrl: redirectUrl });
-  };
-
-  const handleEssenciaLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setLoading(true);
-
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
+  // Google login
+  const handleGoogleSignIn = () => {
+    clearMessages();
+    signIn("google", {
       callbackUrl: redirectUrl,
     });
+  };
 
-    setLoading(false);
+  // Facebook login
+  const handleFacebookSignIn = () => {
+    clearMessages();
+    signIn("facebook", {
+      callbackUrl: redirectUrl,
+    });
+  };
 
-    if (res?.error) {
-      setErrorMsg("Hibás email vagy jelszó.");
-      return;
+  const handleCredentialsSignIn = async () => {
+    clearMessages();
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        identifier, // email VAGY telefon
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Hibás belépési adatok.");
+      } else {
+        setMessage("Sikeres bejelentkezés, átirányítás…");
+        window.location.href = redirectUrl;
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Váratlan hiba történt bejelentkezéskor.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Ha sikerült, akkor manuálisan átirányítunk
-    if (res?.url) {
-      window.location.href = res.url;
+  // Regisztráció (API /api/register)
+  const handleRegister = async () => {
+    clearMessages();
+    setLoading(true);
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier, // itt küldjük tovább az "Email vagy telefonszám" mezőt
+          phone,
+          password,
+          name,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Regisztrációs hiba");
+        return;
+      }
+
+      setMessage("Sikeres regisztráció! Most már be tudsz jelentkezni.");
+    } catch (e) {
+      console.error(e);
+      setError("Váratlan hiba történt regisztrációkor.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: "https://essenciastore.com" });
+    clearMessages();
+    signOut({
+      callbackUrl: "https://essenciastore.com",
+    });
   };
 
-  // UI
   return (
     <main
       style={{
@@ -94,151 +147,10 @@ export default function LoginClient() {
             fontSize: "0.95rem",
           }}
         >
-          Jelentkezz be Essencia fiókkal, Google-lal vagy Facebookkal.
+          Biztonságos bejelentkezés Google-, Facebook-fiókkal vagy email/jelszóval.
         </p>
 
         {status === "loading" && <p>Betöltés…</p>}
-
-        {status === "unauthenticated" && (
-          <>
-            {/* SAJÁT EMAIL/JELSZÓ ŰRLAP */}
-            <form
-              onSubmit={handleEssenciaLogin}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-                marginBottom: "1.5rem",
-                textAlign: "left",
-              }}
-            >
-              <label style={{ fontSize: "0.85rem", color: "#4b5563" }}>
-                Email
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    marginTop: "0.25rem",
-                    borderRadius: "999px",
-                    border: "1px solid #e5e7eb",
-                    padding: "0.6rem 1rem",
-                    fontSize: "0.9rem",
-                  }}
-                />
-              </label>
-              <label style={{ fontSize: "0.85rem", color: "#4b5563" }}>
-                Jelszó
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    marginTop: "0.25rem",
-                    borderRadius: "999px",
-                    border: "1px solid #e5e7eb",
-                    padding: "0.6rem 1rem",
-                    fontSize: "0.9rem",
-                  }}
-                />
-              </label>
-
-              {errorMsg && (
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "#b91c1c",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  {errorMsg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  padding: "0.8rem 1.9rem",
-                  borderRadius: "999px",
-                  border: "none",
-                  cursor: "pointer",
-                  background: "#111827",
-                  color: "white",
-                  fontSize: "0.95rem",
-                  fontWeight: 500,
-                  marginTop: "0.4rem",
-                }}
-              >
-                {loading ? "Beléptetés…" : "Belépés Essencia fiókkal"}
-              </button>
-            </form>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                marginBottom: "1rem",
-                fontSize: "0.8rem",
-                color: "#9ca3af",
-              }}
-            >
-              <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-              <span>vagy</span>
-              <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-            </div>
-
-            {/* Google gomb */}
-            <button
-              onClick={handleGoogle}
-              style={{
-                padding: "0.8rem 1.9rem",
-                borderRadius: "999px",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.7rem",
-                background: "white",
-                fontSize: "0.95rem",
-                fontWeight: 500,
-                width: "100%",
-                justifyContent: "center",
-                marginBottom: "0.6rem",
-              }}
-            >
-              <span>🔒</span>
-              <span>Bejelentkezés Google-fiókkal</span>
-            </button>
-
-            {/* Facebook gomb */}
-            <button
-              onClick={handleFacebook}
-              style={{
-                padding: "0.8rem 1.6rem",
-                borderRadius: "999px",
-                border: "1px solid #1877f2",
-                cursor: "pointer",
-                fontSize: "0.95rem",
-                background: "#1877f2",
-                color: "white",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.6rem",
-                width: "100%",
-                justifyContent: "center",
-              }}
-            >
-              <span>📘</span>
-              <span>Bejelentkezés Facebookkal</span>
-            </button>
-          </>
-        )}
 
         {status === "authenticated" && (
           <>
@@ -260,6 +172,221 @@ export default function LoginClient() {
               Kijelentkezés
             </button>
           </>
+        )}
+
+        {status === "unauthenticated" && (
+          <>
+            {/* Social login gombok */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.6rem",
+                marginBottom: "1.4rem",
+              }}
+            >
+              <button
+                onClick={handleGoogleSignIn}
+                style={{
+                  padding: "0.9rem 1.9rem",
+                  borderRadius: "999px",
+                  border: "1px solid #e5e7eb",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.7rem",
+                  background: "white",
+                  fontSize: "0.98rem",
+                  fontWeight: 500,
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+              >
+                <span role="img" aria-label="G">
+                  🔒
+                </span>
+                <span>Bejelentkezés Google-fiókkal</span>
+              </button>
+
+              <button
+                onClick={handleFacebookSignIn}
+                style={{
+                  padding: "0.8rem 1.6rem",
+                  borderRadius: "999px",
+                  border: "1px solid #1877f2",
+                  cursor: "pointer",
+                  fontSize: "1rem",
+                  background: "#1877f2",
+                  color: "white",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+              >
+                <span>📘</span>
+                <span>Bejelentkezés Facebookkal</span>
+              </button>
+            </div>
+
+            {/* Szeparátor */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.8rem",
+                marginBottom: "1rem",
+                color: "#9ca3af",
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e5e7eb",
+                }}
+              />
+              <span>vagy emaillel</span>
+              <span
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e5e7eb",
+                }}
+              />
+            </div>
+
+            {/* Email + jelszó form */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.6rem",
+                textAlign: "left",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Név (opcionális)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={{
+                  padding: "0.6rem 0.9rem",
+                  borderRadius: "0.7rem",
+                  border: "1px solid #e5e7eb",
+                  fontSize: "0.9rem",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Email vagy telefonszám"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                style={{
+                  padding: "0.6rem 0.9rem",
+                  borderRadius: "0.7rem",
+                  border: "1px solid #e5e7eb",
+                  fontSize: "0.9rem",
+                }}
+              />
+              <input
+                type="tel"
+                placeholder="Telefonszám (opcionális)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                style={{
+                  padding: "0.6rem 0.9rem",
+                  borderRadius: "0.7rem",
+                  border: "1px solid #e5e7eb",
+                  fontSize: "0.9rem",
+                }}
+              />
+              <input
+                type="password"
+                placeholder="Jelszó"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  padding: "0.6rem 0.9rem",
+                  borderRadius: "0.7rem",
+                  border: "1px solid #e5e7eb",
+                  fontSize: "0.9rem",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "0.6rem",
+                marginTop: "0.9rem",
+              }}
+            >
+              <button
+                onClick={handleCredentialsSignIn}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "999px",
+                  border: "none",
+                  cursor: "pointer",
+                  background: "#111827",
+                  color: "white",
+                  fontSize: "0.9rem",
+                  fontWeight: 500,
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                Belépés
+              </button>
+              <button
+                onClick={handleRegister}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "999px",
+                  border: "1px solid #e5e7eb",
+                  cursor: "pointer",
+                  background: "white",
+                  fontSize: "0.9rem",
+                  fontWeight: 500,
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                Regisztráció
+              </button>
+            </div>
+          </>
+        )}
+
+        {error && (
+          <p
+            style={{
+              color: "#b91c1c",
+              fontSize: "0.85rem",
+              marginTop: "1rem",
+            }}
+          >
+            {error}
+          </p>
+        )}
+        {message && (
+          <p
+            style={{
+              color: "#059669",
+              fontSize: "0.85rem",
+              marginTop: "1rem",
+            }}
+          >
+            {message}
+          </p>
         )}
 
         <p
