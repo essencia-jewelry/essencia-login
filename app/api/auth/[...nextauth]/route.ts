@@ -3,12 +3,12 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+// @ts-ignore - Vercel TS nem talál típusokat bcrypt-hez, de a runtime működik
 import bcrypt from "bcrypt";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
-  // JWT alapú session – ez a legegyszerűbb
   session: {
     strategy: "jwt",
   },
@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
 
         let user = null;
 
-        // Ha @ van benne → email, különben telefonszámnak nézzük
+        // Ha @ van benne → email, különben telefonszám
         if (identifier.includes("@")) {
           user = await prisma.user.findUnique({
             where: { email: identifier },
@@ -69,7 +69,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Ez kerül bele a JWT-be és a session-be
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -80,7 +79,6 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // opcionális, de hasznos: berakjuk az id-t a tokenbe és session-be
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
@@ -95,7 +93,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // Ha essenciastore.com-os URL-t adtál callbacknek, engedjük
       if (url.startsWith("https://essenciastore.com")) return url;
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       return baseUrl;

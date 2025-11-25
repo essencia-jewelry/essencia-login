@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+// @ts-ignore - Vercel TS nem talál típusokat bcrypt-hez, de a runtime működik
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 
