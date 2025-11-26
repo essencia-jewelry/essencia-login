@@ -1,58 +1,13 @@
-"use client";
+import HomeClient from "./HomeClient";
 
-import { useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
-import LoginClient from "./LoginClient";
+type PageProps = {
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
 
-export default function HomePage() {
-  const { status } = useSession();
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function HomePage({ searchParams }: PageProps) {
+  const raw = searchParams?.redirect;
+  const redirect =
+    Array.isArray(raw) ? (raw[0] as string | undefined) ?? null : raw ?? null;
 
-  const rawRedirect = searchParams.get("redirect");
-  const target =
-    rawRedirect && rawRedirect.startsWith("/") ? rawRedirect : "/profile";
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    router.replace(target);
-  }, [status, target, router]);
-
-  if (status === "loading") {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "system-ui, sans-serif",
-        }}
-      >
-        <p>Bejelentkezés ellenőrzése…</p>
-      </main>
-    );
-  }
-
-  // Ha már autentikált, de még nem futott le az useEffect,
-  // mutatunk egy rövid "átirányítás" üzenetet
-  if (status === "authenticated") {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "system-ui, sans-serif",
-        }}
-      >
-        <p>Átirányítás a fiókodhoz…</p>
-      </main>
-    );
-  }
-
-  // Ha nincs bejelentkezve → login felület
-  return <LoginClient />;
+  return <HomeClient redirect={redirect} />;
 }
