@@ -3,7 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
-// @ts-ignore - Vercel TS nem talál típusokat bcrypt-hez, de a runtime működik
+// @ts-ignore - Vercel TS nem talál típusokat a "bcrypt"-hez, de runtime-ban működik
 import bcrypt from "bcrypt";
 
 export const authOptions: NextAuthOptions = {
@@ -92,9 +92,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
 
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith("https://essenciastore.com")) return url;
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
+     async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return baseUrl + url;
+      if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     },
   },

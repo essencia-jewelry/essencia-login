@@ -8,16 +8,18 @@ export default function LoginClient() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
 
+  // Csak relatív redirectet engedünk, default: /profile
+  const rawRedirect = searchParams.get("redirect");
   const redirectUrl =
-    searchParams.get("redirect") ?? "https://essenciastore.com/account";
+    rawRedirect && rawRedirect.startsWith("/") ? rawRedirect : "/profile";
 
-  // Email/jelszó state-ek
+  // Form mezők
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Üzenetek + loading
+  // UI státuszok
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function LoginClient() {
     setError(null);
   };
 
-  // Google login
+  // GOOGLE login → redirectUrl (profile / orders)
   const handleGoogleSignIn = () => {
     clearMessages();
     signIn("google", {
@@ -35,7 +37,7 @@ export default function LoginClient() {
     });
   };
 
-  // Facebook login
+  // FACEBOOK login
   const handleFacebookSignIn = () => {
     clearMessages();
     signIn("facebook", {
@@ -43,14 +45,15 @@ export default function LoginClient() {
     });
   };
 
+  // EMAIL / TELÓ + JELSZÓ BELÉPÉS
   const handleCredentialsSignIn = async () => {
     clearMessages();
     setLoading(true);
     try {
       const res = await signIn("credentials", {
-        identifier, // email VAGY telefon
+        identifier,
         password,
-        redirect: false,
+        redirect: false, // manuális redirect
       });
 
       if (res?.error) {
@@ -67,7 +70,7 @@ export default function LoginClient() {
     }
   };
 
-  // Regisztráció (API /api/register)
+  // REGISZTRÁCIÓ (/api/register)
   const handleRegister = async () => {
     clearMessages();
     setLoading(true);
@@ -78,7 +81,7 @@ export default function LoginClient() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          identifier, // itt küldjük tovább az "Email vagy telefonszám" mezőt
+          identifier,
           phone,
           password,
           name,
@@ -101,10 +104,11 @@ export default function LoginClient() {
     }
   };
 
+  // KIJELENTKEZÉS
   const handleSignOut = () => {
     clearMessages();
     signOut({
-      callbackUrl: "https://essenciastore.com",
+      callbackUrl: "/", // saját app főoldala
     });
   };
 
@@ -140,6 +144,7 @@ export default function LoginClient() {
         >
           Essencia Login
         </h1>
+
         <p
           style={{
             marginBottom: "1.6rem",
@@ -202,10 +207,7 @@ export default function LoginClient() {
                   justifyContent: "center",
                 }}
               >
-                <span role="img" aria-label="G">
-                  🔒
-                </span>
-                <span>Bejelentkezés Google-fiókkal</span>
+                🔒 Bejelentkezés Google-lel
               </button>
 
               <button
@@ -215,7 +217,6 @@ export default function LoginClient() {
                   borderRadius: "999px",
                   border: "1px solid #1877f2",
                   cursor: "pointer",
-                  fontSize: "1rem",
                   background: "#1877f2",
                   color: "white",
                   display: "inline-flex",
@@ -225,8 +226,7 @@ export default function LoginClient() {
                   justifyContent: "center",
                 }}
               >
-                <span>📘</span>
-                <span>Bejelentkezés Facebookkal</span>
+                📘 Bejelentkezés Facebookkal
               </button>
             </div>
 
@@ -261,7 +261,7 @@ export default function LoginClient() {
               />
             </div>
 
-            {/* Email + jelszó form */}
+            {/* Email/telefon + jelszó form */}
             <div
               style={{
                 display: "flex",
@@ -318,6 +318,25 @@ export default function LoginClient() {
                   fontSize: "0.9rem",
                 }}
               />
+
+              {/* Elfelejtett jelszó link */}
+              <div
+                style={{
+                  marginTop: "0.3rem",
+                  textAlign: "right",
+                }}
+              >
+                <a
+                  href="/forgot-password"
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#2563eb",
+                    textDecoration: "none",
+                  }}
+                >
+                  Elfelejtetted a jelszavad?
+                </a>
+              </div>
             </div>
 
             <div

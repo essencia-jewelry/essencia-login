@@ -10,9 +10,24 @@ datasource db {
 
 model User {
   id           String   @id @default(cuid())
-  email        String?   @unique
-  phone        String?   @unique
-  passwordHash String
+  email        String?  @unique
+  phone        String?  @unique
   name         String?
-  createdAt    DateTime @default(now())
+  passwordHash String
+
+  // kapcsolat a reset tokenekkel
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt   // <-- FONTOS: itt lett ? (opcionális)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
 }
