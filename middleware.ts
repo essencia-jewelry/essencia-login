@@ -1,12 +1,17 @@
 // middleware.ts
-export { default } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 
-// Itt mondjuk meg, mely útvonalakat védje a NextAuth middleware.
+export default withAuth({
+  pages: {
+    signIn: "/login", // ha nem jelentkezett be, ide dobja
+  },
+});
+
 export const config = {
   matcher: [
-    "/orders",        
-    "/profile",
-    "/settings",
-    "/password",
+    "/orders/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/password/:path*",
   ],
 };
