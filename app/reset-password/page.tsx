@@ -1,33 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ResetPasswordPage() {
+/**
+ * A belső komponens, ahol ténylegesen használjuk a useSearchParams hookot.
+ */
+function ResetPasswordInner() {
   const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
 
-  const [token, setToken] = useState<string | null>(null); // null = még nem olvastuk be
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Token kiolvasása a queryből
-  useEffect(() => {
-    const t = searchParams.get("token");
-    setToken(t ?? "");
-  }, [searchParams]);
-
   const handleSubmit = async () => {
-    if (!token) {
-      setError("Hiányzó vagy érvénytelen jelszó-visszaállító link.");
-      return;
-    }
-
     setMessage(null);
     setError(null);
     setLoading(true);
-
     try {
       const res = await fetch("/api/password/reset/confirm", {
         method: "POST",
@@ -43,7 +34,7 @@ export default function ResetPasswordPage() {
       }
 
       setMessage(
-        "Az új jelszavad sikeresen be lett állítva. ✅ Most már bejelentkezhetsz."
+        "Az új jelszavad sikeresen be lett állítva. Most már bejelentkezhetsz. ✅"
       );
       setNewPassword("");
     } catch (e) {
@@ -54,25 +45,7 @@ export default function ResetPasswordPage() {
     }
   };
 
-  // Még töltjük a token értékét
-  if (token === null) {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "system-ui, sans-serif",
-        }}
-      >
-        <p>Link ellenőrzése…</p>
-      </main>
-    );
-  }
-
-  // Token üres → tényleg nincs vagy rossz a link
-  if (token === "") {
+  if (!token) {
     return (
       <main
         style={{
@@ -88,7 +61,6 @@ export default function ResetPasswordPage() {
     );
   }
 
-  // Van token → normál UI
   return (
     <main
       style={{
@@ -187,3 +159,20 @@ export default function ResetPasswordPage() {
     </main>
   );
 }
+
+/**
+ * Külső komponens – itt tesszük Suspense alá a belső komponenst.
+ */
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40 }}>Betöltés…</div>}>
+      <ResetPasswordInner />
+    </Suspense>
+  );
+}
+
+/* Konfiguráció, hogy ne akarja statikusan előrenderelni */
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const runtime = "nodejs";
